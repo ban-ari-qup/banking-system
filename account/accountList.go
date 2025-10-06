@@ -33,6 +33,9 @@ func (al *AccountList) AddAccount(account *Account) error {
 	}
 	al.accounts[account.ID] = account
 	al.accountsbyNumber[account.Phone] = account
+	if err := al.SaveToFile("accounts.json"); err != nil {
+		return fmt.Errorf("failed to save accounts to file: %v", err)
+	}
 	return nil
 }
 
@@ -57,6 +60,9 @@ func (al *AccountList) RemoveAccount(id string) error {
 
 	delete(al.accountsbyNumber, al.accounts[id].Phone)
 	delete(al.accounts, id)
+	if err := al.SaveToFile("accounts.json"); err != nil {
+		return fmt.Errorf("failed to save accounts to file: %v", err)
+	}
 	return nil
 }
 
@@ -83,9 +89,11 @@ func (al *AccountList) TransferByID(fromID string, toID string, amount float64) 
 	if fromAcc.Balance < amount {
 		return fmt.Errorf("insufficient funds")
 	}
-
 	fromAcc.Balance -= amount
 	toAcc.Balance += amount
+	if err := al.SaveToFile("accounts.json"); err != nil {
+		return fmt.Errorf("failed to save accounts to file: %v", err)
+	}
 	return nil
 }
 
@@ -115,5 +123,8 @@ func (al *AccountList) TransferByNumber(fromNumber string, toNumber string, amou
 
 	fromAcc.Balance -= amount
 	toAcc.Balance += amount
+	if err := al.SaveToFile("accounts.json"); err != nil {
+		return fmt.Errorf("failed to save accounts to file: %v", err)
+	}
 	return nil
 }

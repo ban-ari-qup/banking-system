@@ -6,7 +6,7 @@ type ValidationRule func(*Account) error
 
 var validationRules = []ValidationRule{
 	validateAge,
-	validatePassword,
+	// validatePassword,
 	validatePhone,
 }
 
@@ -17,17 +17,17 @@ func validateAge(a *Account) error {
 	return nil
 }
 
-func validatePassword(a *Account) error {
-	if len(a.Password) != 4 {
-		return fmt.Errorf("password must be exactly 4 digits")
-	}
-	for _, ch := range a.Password {
-		if ch < '0' || ch > '9' {
-			return fmt.Errorf("password must contain only digits")
-		}
-	}
-	return nil
-}
+//	func validatePassword(a *Account) error {
+//		if len(a.Password) != 4 {
+//			return fmt.Errorf("password must be exactly 4 digits")
+//		}
+//		for _, ch := range a.Password {
+//			if ch < '0' || ch > '9' {
+//				return fmt.Errorf("password must contain only digits")
+//			}
+//		}
+//		return nil
+//	}
 func validatePhone(a *Account) error {
 	if len(a.Phone) != 11 {
 		return fmt.Errorf("phone number must be exactly 11 digits")

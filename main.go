@@ -6,10 +6,24 @@ import (
 )
 
 func main() {
-	printAccountDetails(createAccount())
+	accountList := account.NewAccountList()
+	accountList.LoadFromFile("accounts.json") // Загружаем существующие данные
+	example := accountList.GetAccounts()
+	for _, acc := range example {
+		printAccountDetails(acc)
+	}
+	for {
+		acc := createAccount(accountList)
+		printAccountDetails(acc)
+		if err := accountList.AddAccount(acc); err != nil {
+			fmt.Println("Error adding account to list:\n" + err.Error())
+		} else {
+			fmt.Println("Account successfully added to the list.")
+		}
+	}
 }
 
-func createAccount() *account.Account {
+func createAccount(accountList *account.AccountList) *account.Account {
 	var password, name, phone string
 	var age int
 
@@ -30,9 +44,6 @@ func createAccount() *account.Account {
 	if err := acc.Validate(); err != nil {
 		panic("Error creating account:\n" + err.Error())
 	}
-
-	accountList := account.NewAccountList()
-	accountList.AddAccount(acc)
 	return acc
 }
 func printAccountDetails(acc *account.Account) {

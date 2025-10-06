@@ -20,6 +20,9 @@ type Account struct {
 }
 
 func NewAccount(password, name, phone string, age int) *Account {
+	if err := validatePassword(password); err != nil {
+		panic("Error creating account:\n" + err.Error())
+	}
 	generator := NewCardGenerator()
 	return &Account{
 		ID:        generator.GenerateCardNumber(),
@@ -76,20 +79,31 @@ func (a *Account) Withdraw(amount float64) error {
 	return nil
 }
 
-// func Transfer(from, to *Account, amount float64) error {
-// 	if from.IsExpired() {
-// 		return fmt.Errorf("account is expired")
-// 	}
-// 	if to.IsExpired() {
-// 		return fmt.Errorf("account is unknown")
-// 	}
-// 	if amount <= 0 {
-// 		return fmt.Errorf("amount must be positive")
-// 	}
-// 	if from.Balance < amount {
-// 		return fmt.Errorf("insufficient funds")
-// 	}
-// 	from.Balance -= amount
-// 	to.Balance += amount
-// 	return nil
-// }
+//	func Transfer(from, to *Account, amount float64) error {
+//		if from.IsExpired() {
+//			return fmt.Errorf("account is expired")
+//		}
+//		if to.IsExpired() {
+//			return fmt.Errorf("account is unknown")
+//		}
+//		if amount <= 0 {
+//			return fmt.Errorf("amount must be positive")
+//		}
+//		if from.Balance < amount {
+//			return fmt.Errorf("insufficient funds")
+//		}
+//		from.Balance -= amount
+//		to.Balance += amount
+//		return nil
+//	}
+func validatePassword(a string) error {
+	if len(a) != 4 {
+		return fmt.Errorf("password must be exactly 4 digits")
+	}
+	for _, ch := range a {
+		if ch < '0' || ch > '9' {
+			return fmt.Errorf("password must contain only digits")
+		}
+	}
+	return nil
+}

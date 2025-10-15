@@ -7,7 +7,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type Account struct {
+type Account struct { //структура аккаунта
 	ID        string    `json:"id"`
 	Password  string    `json:"password"`
 	CVC2      string    `json:"cvc2"`
@@ -19,7 +19,7 @@ type Account struct {
 	ExpiredAt time.Time `json:"expired_at"`
 }
 
-func NewAccount(password, name, phone string, age int) *Account {
+func NewAccount(password, name, phone string, age int) *Account { //функция создания нового аккаунта
 	if err := validatePassword(password); err != nil {
 		panic("Error creating account:\n" + err.Error())
 	}
@@ -37,11 +37,11 @@ func NewAccount(password, name, phone string, age int) *Account {
 	}
 }
 
-func (a *Account) IsExpired() bool {
+func (a *Account) IsExpired() bool { //проверка на истечение срока действия аккаунта
 	return time.Now().After(a.ExpiredAt)
 }
 
-func hashPassword(passowrd string) string {
+func hashPassword(passowrd string) string { //хеширование пароля
 	bytes, err := bcrypt.GenerateFromPassword([]byte(passowrd), 14)
 	if err != nil {
 		panic(err)
@@ -49,12 +49,12 @@ func hashPassword(passowrd string) string {
 	return string(bytes)
 }
 
-func CheckPasswordHash(password, hash string) bool {
+func CheckPasswordHash(password, hash string) bool { //проверка пароля
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }
 
-func (a *Account) Deposit(amount float64) error {
+func (a *Account) Deposit(amount float64) error { //пополнение баланса
 	if a.IsExpired() {
 		return fmt.Errorf("account is expired")
 	}
@@ -65,7 +65,7 @@ func (a *Account) Deposit(amount float64) error {
 	return nil
 }
 
-func (a *Account) Withdraw(amount float64) error {
+func (a *Account) Withdraw(amount float64) error { //снятие средств
 	if a.IsExpired() {
 		return fmt.Errorf("account is expired")
 	}
@@ -96,7 +96,7 @@ func (a *Account) Withdraw(amount float64) error {
 //		to.Balance += amount
 //		return nil
 //	}
-func validatePassword(a string) error {
+func validatePassword(a string) error { //валидация пароля
 	if len(a) != 4 {
 		return fmt.Errorf("password must be exactly 4 digits")
 	}

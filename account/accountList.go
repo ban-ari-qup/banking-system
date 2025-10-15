@@ -5,19 +5,19 @@ import (
 	"sync"
 )
 
-type AccountList struct {
+type AccountList struct { // список аккаунтов
 	accounts         map[string]*Account
 	accountsbyNumber map[string]*Account
 	mu               sync.RWMutex // для потокобезопасности
 }
 
-func NewAccountList() *AccountList {
+func NewAccountList() *AccountList { // создание нового списка аккаунтов
 	return &AccountList{
 		accounts: make(map[string]*Account), accountsbyNumber: make(map[string]*Account),
 	}
 }
 
-func (al *AccountList) AddAccount(account *Account) error {
+func (al *AccountList) AddAccount(account *Account) error { // добавление аккаунта в список
 	if err := account.Validate(); err != nil {
 		return err
 	}
@@ -39,18 +39,20 @@ func (al *AccountList) AddAccount(account *Account) error {
 	return nil
 }
 
-func (al *AccountList) GetAccounts() []*Account {
+func (al *AccountList) GetAccounts() []*Account { // получение всех аккаунтов
 	al.mu.RLock()
 	defer al.mu.RUnlock()
 
+	fmt.Printf("DEBUG: GetAccounts found %d accounts\n", len(al.accounts))
 	accounts := make([]*Account, 0, len(al.accounts))
 	for _, acc := range al.accounts {
+		fmt.Printf("DEBUG: Processing account: ID='%s', Name='%s'\n", acc.ID, acc.Name)
 		accounts = append(accounts, acc)
 	}
 	return accounts
 }
 
-func (al *AccountList) RemoveAccount(id string) error {
+func (al *AccountList) RemoveAccount(id string) error { // удаление аккаунта по ID
 	al.mu.Lock()
 	defer al.mu.Unlock()
 
@@ -66,7 +68,7 @@ func (al *AccountList) RemoveAccount(id string) error {
 	return nil
 }
 
-func (al *AccountList) TransferByID(fromID string, toID string, amount float64) error {
+func (al *AccountList) TransferByID(fromID string, toID string, amount float64) error { // перевод средств между аккаунтами по ID
 	al.mu.Lock()
 	defer al.mu.Unlock()
 	fromAcc := al.accounts[fromID]
@@ -97,7 +99,7 @@ func (al *AccountList) TransferByID(fromID string, toID string, amount float64) 
 	return nil
 }
 
-func (al *AccountList) TransferByNumber(fromNumber string, toNumber string, amount float64) error {
+func (al *AccountList) TransferByNumber(fromNumber string, toNumber string, amount float64) error { // перевод средств между аккаунтами по номеру телефона
 	al.mu.Lock()
 	defer al.mu.Unlock()
 	fromAcc := al.accountsbyNumber[fromNumber]

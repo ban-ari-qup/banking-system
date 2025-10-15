@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func (al *AccountList) SaveToFile(filename string) error {
+func (al *AccountList) SaveToFile(filename string) error { // сохранение данных в файл
 	data, err := json.MarshalIndent(al.accounts, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal accounts: %v", err)
@@ -18,7 +18,7 @@ func (al *AccountList) SaveToFile(filename string) error {
 	// Реализация сохранения данных в файл
 	return nil
 }
-func (al *AccountList) LoadFromFile(filename string) error {
+func (al *AccountList) LoadFromFile(filename string) error { // загрузка данных из файла
 	al.mu.RLock()
 	defer al.mu.RUnlock()
 	data, err := os.ReadFile(filename)
@@ -33,6 +33,11 @@ func (al *AccountList) LoadFromFile(filename string) error {
 	al.accountsbyNumber = make(map[string]*Account)
 	for _, acc := range al.accounts {
 		al.accountsbyNumber[acc.Phone] = acc
+	}
+	fmt.Printf("DEBUG: Loading from file, found %d accounts\n", len(al.accounts))
+
+	for key, acc := range al.accounts {
+		fmt.Printf("DEBUG: Account key: '%s', ID: '%s', Name: '%s'\n", key, acc.ID, acc.Name)
 	}
 	// Реализация загрузки данных из файла
 	return nil

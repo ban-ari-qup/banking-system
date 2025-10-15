@@ -2,15 +2,15 @@ package account
 
 import "fmt"
 
-type ValidationRule func(*Account) error
+type ValidationRule func(*Account) error //тип функции для валидации
 
-var validationRules = []ValidationRule{
+var validationRules = []ValidationRule{ //список правил валидации
 	validateAge,
 	// validatePassword,
 	validatePhone,
 }
 
-func validateAge(a *Account) error {
+func validateAge(a *Account) error { //валидация возраста
 	if a.Age < 18 {
 		return fmt.Errorf("age must be at least 18")
 	}
@@ -28,7 +28,7 @@ func validateAge(a *Account) error {
 //		}
 //		return nil
 //	}
-func validatePhone(a *Account) error {
+func validatePhone(a *Account) error { //валидация номера
 	if len(a.Phone) != 11 {
 		return fmt.Errorf("phone number must be exactly 11 digits")
 	}
@@ -43,7 +43,7 @@ func validatePhone(a *Account) error {
 	return nil
 }
 
-func (a *Account) Validate() error {
+func (a *Account) Validate() error { //функция валидации аккаунта
 	for _, rule := range validationRules {
 		if err := rule(a); err != nil {
 			return err

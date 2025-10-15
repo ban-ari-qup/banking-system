@@ -7,17 +7,17 @@ import (
 	"time"
 )
 
-type CardGenerator struct {
+type CardGenerator struct { //структура для генерации номеров карт и CVC
 	rng *rand.Rand
 }
 
-func NewCardGenerator() *CardGenerator {
+func NewCardGenerator() *CardGenerator { //функция создания нового генератора
 	source := rand.NewSource(time.Now().UnixNano())
 	return &CardGenerator{
 		rng: rand.New(source),
 	}
 }
-func (cg *CardGenerator) GenerateCVC() string {
+func (cg *CardGenerator) GenerateCVC() string { //функция генерации CVC
 	cvc := cg.rng.Intn(1000)
 	for cg.isWeakCVC(cvc) {
 		cvc = cg.rng.Intn(1000)
@@ -25,7 +25,7 @@ func (cg *CardGenerator) GenerateCVC() string {
 	return fmt.Sprintf("%03d", cvc)
 }
 
-func (cg *CardGenerator) isWeakCVC(cvc int) bool {
+func (cg *CardGenerator) isWeakCVC(cvc int) bool { //проверка на слабый CVC
 	if cvc < 10 {
 		return true
 	}
@@ -47,7 +47,7 @@ func (cg *CardGenerator) isWeakCVC(cvc int) bool {
 	return false
 }
 
-func (cg *CardGenerator) GenerateCardNumber() string {
+func (cg *CardGenerator) GenerateCardNumber() string { //функция генерации номера карты
 	digits := []int{4, 4, 0, 0, 4, 3, 0, 2}
 	for i := 0; i < 7; i++ {
 		digits = append(digits, cg.rng.Intn(10))
@@ -72,7 +72,7 @@ func (cg *CardGenerator) GenerateCardNumber() string {
 // 	last_numb := (10 - (total % 10)) % 10
 // 	arr = append(arr, last_numb)
 
-func (cg *CardGenerator) calculateLuhnCheckDigit(digits []int) int {
+func (cg *CardGenerator) calculateLuhnCheckDigit(digits []int) int { //функция вычисления контрольной цифры по алгоритму Луна
 	sum := 0
 	for i, digit := range digits {
 		// Позиция справа: (len(digits) - i)
@@ -87,7 +87,7 @@ func (cg *CardGenerator) calculateLuhnCheckDigit(digits []int) int {
 	return (10 - (sum % 10)) % 10
 }
 
-func (cg *CardGenerator) formatCardNumber(digits []int) string {
+func (cg *CardGenerator) formatCardNumber(digits []int) string { //функция форматирования номера карты
 	var result string
 	for i, digit := range digits {
 		if i > 0 && i%4 == 0 {

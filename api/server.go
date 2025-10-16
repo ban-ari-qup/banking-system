@@ -238,7 +238,7 @@ func (s *Server) handleAccountTransfer(w http.ResponseWriter, r *http.Request) {
 func (s *Server) Start() {
 	http.HandleFunc("/accounts", s.handleCreateAccount)
 	http.HandleFunc("/accounts/list", s.handleGetAccounts)
-	http.HandleFunc("/acccounts/delete", s.handleDeleteAccount)
+	http.HandleFunc("/accounts/delete", s.handleDeleteAccount)
 	http.HandleFunc("/accounts/{id}", s.handleGetAccountByID)
 	// http.HandleFunc("/accounts/{number}", s.handleGetAccountByNumber)
 	http.HandleFunc("/accounts/{id}/deposit", s.handleDeposit)

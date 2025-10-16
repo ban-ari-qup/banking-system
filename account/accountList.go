@@ -71,11 +71,11 @@ func (al *AccountList) RemoveAccount(id string) error { // удаление ак
 func (al *AccountList) Transfer(from string, to string, amount float64) error { // перевод средств между аккаунтами по ID
 	al.mu.Lock()
 	defer al.mu.Unlock()
-	fromAcc, err := al.GetAccount(from)
+	fromAcc, err := al.findAccountInternal(from)
 	if err != nil {
 		return fmt.Errorf("source account not found")
 	}
-	toAcc, err := al.GetAccount(to)
+	toAcc, err := al.findAccountInternal(to)
 	if err != nil {
 		return fmt.Errorf("destination account not found")
 	}

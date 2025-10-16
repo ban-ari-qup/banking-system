@@ -89,10 +89,10 @@ func (cg *CardGenerator) calculateLuhnCheckDigit(digits []int) int { //функ�
 
 func (cg *CardGenerator) formatCardNumber(digits []int) string { //функция форматирования номера карты
 	var result string
-	for i, digit := range digits {
-		if i > 0 && i%4 == 0 {
-			result += " "
-		}
+	for _, digit := range digits {
+		// if i > 0 && i%4 == 0 {
+		// 	result += " "
+		// }
 		result += strconv.Itoa(digit)
 	}
 	return result

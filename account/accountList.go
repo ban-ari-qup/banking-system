@@ -68,22 +68,19 @@ func (al *AccountList) RemoveAccount(id string) error { // удаление ак
 	return nil
 }
 
-func (al *AccountList) TransferByID(fromID string, toID string, amount float64) error { // перевод средств между аккаунтами по ID
+func (al *AccountList) Transfer(from string, to string, amount float64) error { // перевод средств между аккаунтами по ID
 	al.mu.Lock()
 	defer al.mu.Unlock()
-	fromAcc := al.accounts[fromID]
-	if fromAcc == nil {
+	fromAcc, err := al.GetAccount(from)
+	if err != nil {
 		return fmt.Errorf("source account not found")
 	}
-	toAcc := al.accounts[toID]
-	if toAcc == nil {
+	toAcc, err := al.GetAccount(to)
+	if err != nil {
 		return fmt.Errorf("destination account not found")
 	}
-	if fromAcc.IsExpired() {
+	if fromAcc.IsExpired() || toAcc.IsExpired() {
 		return fmt.Errorf("source account is expired")
-	}
-	if toAcc.IsExpired() {
-		return fmt.Errorf("destination account is expired")
 	}
 	if amount <= 0 {
 		return fmt.Errorf("amount must be positive")
@@ -99,34 +96,56 @@ func (al *AccountList) TransferByID(fromID string, toID string, amount float64) 
 	return nil
 }
 
-func (al *AccountList) TransferByNumber(fromNumber string, toNumber string, amount float64) error { // перевод средств между аккаунтами по номеру телефона
-	al.mu.Lock()
-	defer al.mu.Unlock()
-	fromAcc := al.accountsbyNumber[fromNumber]
-	if fromAcc == nil {
-		return fmt.Errorf("source account not found")
-	}
-	toAcc := al.accountsbyNumber[toNumber]
-	if toAcc == nil {
-		return fmt.Errorf("destination account not found")
-	}
-	if fromAcc.IsExpired() {
-		return fmt.Errorf("source account is expired")
-	}
-	if toAcc.IsExpired() {
-		return fmt.Errorf("destination account is expired")
-	}
-	if amount <= 0 {
-		return fmt.Errorf("amount must be positive")
-	}
-	if fromAcc.Balance < amount {
-		return fmt.Errorf("insufficient funds")
-	}
+// func (al *AccountList) TransferByNumber(fromNumber string, toNumber string, amount float64) error { // перевод средств между аккаунтами по номеру телефона
+// 	al.mu.Lock()
+// 	defer al.mu.Unlock()
+// 	fromAcc := al.accountsbyNumber[fromNumber]
+// 	if fromAcc == nil {
+// 		return fmt.Errorf("source account not found")
+// 	}
+// 	toAcc := al.accountsbyNumber[toNumber]
+// 	if toAcc == nil {
+// 		return fmt.Errorf("destination account not found")
+// 	}
+// 	if fromAcc.IsExpired() {
+// 		return fmt.Errorf("source account is expired")
+// 	}
+// 	if toAcc.IsExpired() {
+// 		return fmt.Errorf("destination account is expired")
+// 	}
+// 	if amount <= 0 {
+// 		return fmt.Errorf("amount must be positive")
+// 	}
+// 	if fromAcc.Balance < amount {
+// 		return fmt.Errorf("insufficient funds")
+// 	}
 
-	fromAcc.Balance -= amount
-	toAcc.Balance += amount
-	if err := al.SaveToFile("accounts.json"); err != nil {
-		return fmt.Errorf("failed to save accounts to file: %v", err)
+//		fromAcc.Balance -= amount
+//		toAcc.Balance += amount
+//		if err := al.SaveToFile("accounts.json"); err != nil {
+//			return fmt.Errorf("failed to save accounts to file: %v", err)
+//		}
+//		return nil
+//	}
+func (al *AccountList) findAccountInternal(id string) (*Account, error) { // внутренний метод для поиска аккаунта по ID
+	if acc, exists := al.accounts[id]; exists {
+		return acc, nil
 	}
-	return nil
+	if acc, exists := al.accountsbyNumber[id]; exists {
+		return acc, nil
+	}
+	return nil, fmt.Errorf("account not found")
+}
+
+func (al *AccountList) GetAccount(id string) (*Account, error) { // получение аккаунта по ID
+	al.mu.RLock()
+	defer al.mu.RUnlock()
+
+	if acc, exists := al.accounts[id]; exists {
+		return acc, nil
+	}
+	if acc, exists := al.accountsbyNumber[id]; exists {
+		return acc, nil
+	}
+	return nil, fmt.Errorf("account not found")
 }

@@ -6,27 +6,36 @@ import (
 	"os"
 )
 
-func (al *AccountList) SaveToFile(filename string) error { // сохранение данных в файл
+//const nameFile = "accounts.json"
+
+// сохранение данных в файл
+func (al *AccountList) SaveToFile(filename string) error {
+	al.mu.RLock()
+	defer al.mu.RUnlock()
+
 	data, err := json.MarshalIndent(al.accounts, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal accounts: %v", err)
 	}
-	err = os.WriteFile(filename, data, 0644)
-	if err != nil {
+
+	if err = os.WriteFile(filename, data, 0644); err != nil {
 		return fmt.Errorf("failed to write file: %v", err)
 	}
-	// Реализация сохранения данных в файл
 	return nil
 }
-func (al *AccountList) LoadFromFile(filename string) error { // загрузка данных из файла
+
+// загрузка данных из файла
+func (al *AccountList) LoadFromFile(filename string) error {
 	al.mu.RLock()
 	defer al.mu.RUnlock()
+
 	data, err := os.ReadFile(filename)
+
 	if err != nil {
 		return fmt.Errorf("failed to read file: %v", err)
 	}
-	err = json.Unmarshal(data, &al.accounts)
-	if err != nil {
+
+	if err := json.Unmarshal(data, &al.accounts); err != nil {
 		return fmt.Errorf("failed to unmarshal accounts: %v", err)
 	}
 
@@ -34,11 +43,6 @@ func (al *AccountList) LoadFromFile(filename string) error { // загрузка
 	for _, acc := range al.accounts {
 		al.accountsbyNumber[acc.Phone] = acc
 	}
-	fmt.Printf("DEBUG: Loading from file, found %d accounts\n", len(al.accounts))
 
-	for key, acc := range al.accounts {
-		fmt.Printf("DEBUG: Account key: '%s', ID: '%s', Name: '%s'\n", key, acc.ID, acc.Name)
-	}
-	// Реализация загрузки данных из файла
 	return nil
 }

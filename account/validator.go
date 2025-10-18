@@ -2,51 +2,44 @@ package account
 
 import "fmt"
 
-type ValidationRule func(*Account) error //тип функции для валидации
+// тип функции для валидации аккаунта
+type ValidationRule func(*Account) error
 
-var validationRules = []ValidationRule{ //список правил валидации
+// список правил валидации
+var validationRules = []ValidationRule{
 	validateAge,
-	// validatePassword,
 	validatePhone,
 }
 
-func validateAge(a *Account) error { //валидация возраста
-	if a.Age < 18 {
+// метод валидации аккаунта
+func (acc *Account) Validate() error {
+	for _, rule := range validationRules {
+		if err := rule(acc); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// функция валидации возраста
+func validateAge(acc *Account) error {
+	if acc.Age < 18 {
 		return fmt.Errorf("age must be at least 18")
 	}
 	return nil
 }
 
-//	func validatePassword(a *Account) error {
-//		if len(a.Password) != 4 {
-//			return fmt.Errorf("password must be exactly 4 digits")
-//		}
-//		for _, ch := range a.Password {
-//			if ch < '0' || ch > '9' {
-//				return fmt.Errorf("password must contain only digits")
-//			}
-//		}
-//		return nil
-//	}
-func validatePhone(a *Account) error { //валидация номера
-	if len(a.Phone) != 11 {
+// функция валидации номера телефона
+func validatePhone(acc *Account) error {
+	if len(acc.Phone) != 11 {
 		return fmt.Errorf("phone number must be exactly 11 digits")
 	}
-	for i, ch := range a.Phone {
-		if (i == 0 || i == 1) && ch != '7' {
+	for i, ch := range acc.Phone {
+		if i < 2 && ch != '7' {
 			return fmt.Errorf("phone number must start with '77'")
 		}
 		if ch < '0' || ch > '9' {
 			return fmt.Errorf("phone number must contain only digits")
-		}
-	}
-	return nil
-}
-
-func (a *Account) Validate() error { //функция валидации аккаунта
-	for _, rule := range validationRules {
-		if err := rule(a); err != nil {
-			return err
 		}
 	}
 	return nil

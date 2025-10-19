@@ -1,24 +1,88 @@
 {
-  "4400430263935840": {
-    "id": "4400430263935840",
-    "password": "$2a$14$yj3bm10titg6l2KK1ifuZueiVkHOLj7g4RM6KHrqTX4XcoUwhzd.e",
-    "cvc2": "761",
-    "balance": 100,
-    "name": "Nurtas",
-    "phone": "77072884535",
-    "age": 19,
-    "created_at": "2025-10-18T18:16:15.522805203+05:00",
-    "expired_at": "2030-10-18T18:16:15.522805351+05:00"
-  },
-  "4400430296578971": {
-    "id": "4400430296578971",
-    "password": "$2a$14$rMT0tZ3kEZmLVxkfqM0THOMNsaeKzfhpLfetGDQTOt1rxPq9YCxAW",
-    "cvc2": "668",
+  "4400430203046161": {
+    "id": "4400430203046161",
+    "password": "$2a$14$c.bwV.0jaund/G3cBoVDp.ZqRtK.JQxJ5ZUR4zLK3iFcGLs.kdf56",
+    "cvc2": "928",
     "balance": 0,
-    "name": "Ali",
+    "name": "Nurtas",
     "phone": "77016874388",
-    "age": 18,
-    "created_at": "2025-10-06T12:49:07.227901626+05:00",
-    "expired_at": "2030-10-06T12:49:07.22790168+05:00"
+    "age": 40,
+    "created_at": "2025-10-19T17:46:00.674242082+05:00",
+    "expired_at": "2030-10-19T17:46:00.674242221+05:00",
+    "transactions": []
+  },
+  "4400430249763639": {
+    "id": "4400430249763639",
+    "password": "$2a$14$SwHIqzvWHFHsii/O7pFMv.VKTJkjH.DoXfaXVRq0fD5meSLH6kERK",
+    "cvc2": "607",
+    "balance": 80,
+    "name": "Ali",
+    "phone": "77078476003",
+    "age": 20,
+    "created_at": "2025-10-19T17:47:42.909381884+05:00",
+    "expired_at": "2030-10-19T17:47:42.90938203+05:00",
+    "transactions": [
+      {
+        "id": 1,
+        "type": "transfer_in",
+        "from_account": "4400430267379524",
+        "to_account": "4400430249763639",
+        "amount": 480,
+        "timestamp": "2025-10-19T17:52:17.093137314+05:00",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "type": "withdrawal",
+        "from_account": "4400430249763639",
+        "to_account": "",
+        "amount": 400,
+        "timestamp": "2025-10-19T17:53:28.176790746+05:00",
+        "status": "completed"
+      }
+    ]
+  },
+  "4400430267379524": {
+    "id": "4400430267379524",
+    "password": "$2a$14$Hq5yAQvn32nWpn72mnfgne7JlCc.ETWQShEbO.3kp6BtIYpDsZ4Iq",
+    "cvc2": "831",
+    "balance": 20,
+    "name": "Asem",
+    "phone": "77477072361",
+    "age": 22,
+    "created_at": "2025-10-19T17:48:05.397978861+05:00",
+    "expired_at": "2030-10-19T17:48:05.397979021+05:00",
+    "transactions": [
+      {
+        "id": 1,
+        "type": "deposit",
+        "from_account": "",
+        "to_account": "4400430267379524",
+        "amount": 500,
+        "timestamp": "2025-10-19T17:50:42.677674918+05:00",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "type": "transfer_out",
+        "from_account": "4400430267379524",
+        "to_account": "4400430249763639",
+        "amount": 480,
+        "timestamp": "2025-10-19T17:52:17.093137104+05:00",
+        "status": "completed"
+      }
+    ]
+  },
+  "4400430296365486": {
+    "id": "4400430296365486",
+    "password": "$2a$14$AiP1Hy0m0qr7I5w1nqaf2.75DueEruS25hVIoaYBYcgRipKYxUDJ6",
+    "cvc2": "931",
+    "balance": 0,
+    "name": "Gulnur",
+    "phone": "77411914893",
+    "age": 40,
+    "created_at": "2025-10-19T17:47:23.70853138+05:00",
+    "expired_at": "2030-10-19T17:47:23.708531492+05:00",
+    "transactions": []
   }
 }

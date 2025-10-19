@@ -9,15 +9,16 @@ import (
 
 // структура аккаунта
 type Account struct {
-	ID        string    `json:"id"`
-	Password  string    `json:"password"` //хешированный пароль
-	CVC2      string    `json:"cvc2"`     // Card Verification Code
-	Balance   float64   `json:"balance"`
-	Name      string    `json:"name"`
-	Phone     string    `json:"phone"`
-	Age       int       `json:"age"`
-	CreatedAt time.Time `json:"created_at"`
-	ExpiredAt time.Time `json:"expired_at"`
+	ID           string        `json:"id"`
+	Password     string        `json:"password"` //хешированный пароль
+	CVC2         string        `json:"cvc2"`     // Card Verification Code
+	Balance      float64       `json:"balance"`
+	Name         string        `json:"name"`
+	Phone        string        `json:"phone"`
+	Age          int           `json:"age"`
+	CreatedAt    time.Time     `json:"created_at"`
+	ExpiredAt    time.Time     `json:"expired_at"`
+	Transactions []Transaction `json:"transactions"`
 }
 
 // функция создания нового аккаунта
@@ -28,56 +29,81 @@ func NewAccount(password, name, phone string, age int) *Account {
 
 	generator := NewCardGenerator()
 	return &Account{
-		ID:        generator.GenerateCardNumber(), //генерация номера аккаунта
-		Password:  hashPassword(password),         //хеширование пароля
-		CVC2:      generator.GenerateCVC(),        //генерация CVC2
-		Balance:   0,
-		Name:      name,
-		Phone:     phone,
-		Age:       age,
-		CreatedAt: time.Now(),
-		ExpiredAt: time.Now().AddDate(5, 0, 0), // срок действия аккаунта 5 лет
+		ID:           generator.GenerateCardNumber(), //генерация номера аккаунта
+		Password:     hashPassword(password),         //хеширование пароля
+		CVC2:         generator.GenerateCVC(),        //генерация CVC2
+		Balance:      0,
+		Name:         name,
+		Phone:        phone,
+		Age:          age,
+		CreatedAt:    time.Now(),
+		ExpiredAt:    time.Now().AddDate(5, 0, 0), // срок действия аккаунта 5 лет
+		Transactions: []Transaction{},
 	}
 }
 
 // проверка на истечение срока действия аккаунта
-func (a *Account) IsExpired() bool {
-	return time.Now().After(a.ExpiredAt)
+func (acc *Account) IsExpired() bool {
+	return time.Now().After(acc.ExpiredAt)
 }
 
 // пополнение баланса
-func (a *Account) Deposit(amount float64) error {
-	if a.IsExpired() {
+func (acc *Account) Deposit(amount float64) error {
+	if acc.IsExpired() {
 		return fmt.Errorf("account is expired")
 	}
 	if amount <= 0 {
 		return fmt.Errorf("amount must be positive")
 	}
-	a.Balance += amount
+	acc.Balance += amount
+
+	transaction := Transaction{
+		ID:          len(acc.Transactions) + 1,
+		Type:        "deposit",
+		FromAccount: "",
+		ToAccount:   acc.ID,
+		Amount:      amount,
+		Timestamp:   time.Now(),
+		Status:      "completed",
+	}
+	acc.Transactions = append(acc.Transactions, transaction)
+
 	return nil
 }
 
 // снятие средств
-func (a *Account) Withdraw(amount float64) error {
-	if a.IsExpired() {
+func (acc *Account) Withdraw(amount float64) error {
+	if acc.IsExpired() {
 		return fmt.Errorf("account is expired")
 	}
 	if amount <= 0 {
 		return fmt.Errorf("amount must be positive")
 	}
-	if a.Balance < amount {
+	if acc.Balance < amount {
 		return fmt.Errorf("insufficient funds")
 	}
-	a.Balance -= amount
+	acc.Balance -= amount
+
+	transaction := Transaction{
+		ID:          len(acc.Transactions) + 1,
+		Type:        "withdrawal",
+		FromAccount: acc.ID,
+		ToAccount:   "",
+		Amount:      amount,
+		Timestamp:   time.Now(),
+		Status:      "completed",
+	}
+	acc.Transactions = append(acc.Transactions, transaction)
+
 	return nil
 }
 
 // валидация пароля
-func validatePassword(a string) error {
-	if len(a) != 4 {
+func validatePassword(pass string) error {
+	if len(pass) != 4 {
 		return fmt.Errorf("password must be exactly 4 digits")
 	}
-	for _, ch := range a {
+	for _, ch := range pass {
 		if ch < '0' || ch > '9' {
 			return fmt.Errorf("password must contain only digits")
 		}

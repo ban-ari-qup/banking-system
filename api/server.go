@@ -23,6 +23,7 @@ func NewServer(accountList *account.AccountList) *Server {
 
 // обработчик создания аккаунта
 func (s *Server) handleCreateAccount(w http.ResponseWriter, r *http.Request) {
+	// start := time.Now()
 	w.Header().Set("Content-Type", "application/json")
 
 	if r.Method != http.MethodPost {
@@ -32,18 +33,25 @@ func (s *Server) handleCreateAccount(w http.ResponseWriter, r *http.Request) {
 
 	var req CreateAccountRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		// log.Printf("❌ JSON decode error: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	// log.Printf("✅ JSON decoded in %v", time.Since(start))
 
 	acc := account.NewAccount(req.Password, req.FirstName, req.Phone, req.Age)
+	// log.Printf("✅ Account object created in %v", time.Since(start))
+
 	if err := s.accountList.AddAccount(acc); err != nil {
+		// log.Printf("❌ AddAccount error: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// log.Printf("✅ Account added to list in %v", time.Since(start))
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(AccountToResponse(acc))
+	// log.Printf("🎉 Total account creation time: %v", time.Since(start))
 }
 
 // обработчик получения всех аккаунтов
@@ -108,19 +116,17 @@ func (s *Server) handleDeposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	acc, err := s.accountList.GetAccount(id)
-	if err != nil {
-		http.Error(w, "Account not found", http.StatusNotFound)
-		return
-	}
-
-	if err := acc.Deposit(amount); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := s.accountList.Deposit(id, amount); err != nil {
+		http.Error(w, "Error depositing amount:\n"+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(AccountToResponse(acc))
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Deposit successful",
+		"id":      id,
+		"amount":  fmt.Sprintf("%.2f", amount),
+	})
 }
 
 func (s *Server) handleWithdraw(w http.ResponseWriter, r *http.Request) {
@@ -139,19 +145,17 @@ func (s *Server) handleWithdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	acc, err := s.accountList.GetAccount(id)
-	if err != nil {
-		http.Error(w, "Error retrieving account:\n"+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err := acc.Withdraw(amount); err != nil {
+	if err := s.accountList.Withdraw(id, amount); err != nil {
 		http.Error(w, "Error withdrawing amount:\n"+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(AccountToResponse(acc))
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Withdrawal successful",
+		"id":      id,
+		"amount":  fmt.Sprintf("%.2f", amount),
+	})
 }
 
 // обработчик удаления аккаунта
@@ -221,16 +225,34 @@ func (s *Server) handleAccountTransfer(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handleAccountTransactions(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		http.Error(w, "Missing account ID", http.StatusBadRequest)
+		return
+	}
+
+	acc, err := s.accountList.GetAccount(id)
+	if err != nil {
+		http.Error(w, "Account not found", http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(acc.Transactions)
+}
+
 func (s *Server) Start() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Post("/accounts", s.handleCreateAccount)
-	r.Get("/accounts/list", s.handleGetAccounts)
+	r.Get("/accounts", s.handleGetAccounts)
 	r.Get("/accounts/{id}", s.handleGetAccount)
+	r.Get("/accounts/{id}/transactions", s.handleAccountTransactions)
 	r.Post("/accounts/{id}/deposit", s.handleDeposit)
 	r.Post("/accounts/{id}/withdraw", s.handleWithdraw)
 	r.Post("/accounts/{id}/transfer", s.handleAccountTransfer)
-	r.Delete("/accounts/{id}/delete", s.handleDeleteAccount)
+	r.Delete("/accounts/{id}", s.handleDeleteAccount)
 	fmt.Println("Server started at http://localhost:8080")
 	http.ListenAndServe(":8080", r)
 }

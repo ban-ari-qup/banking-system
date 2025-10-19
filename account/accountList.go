@@ -3,6 +3,7 @@ package account
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 // структура для хранения списка аккаунтов
@@ -37,7 +38,13 @@ func (al *AccountList) AddAccount(account *Account) error {
 	al.accounts[account.ID] = account
 	al.accountsbyNumber[account.Phone] = account
 
-	return al.saveToFile()
+	go func() {
+		al.saveToFile()
+	}()
+	// if al.saveToFile() != nil {
+	// 	log.Printf("❌ Failed to save account list after adding account ID %s", account.ID)
+	// }
+	return nil
 }
 
 // получение всех аккаунтов
@@ -76,6 +83,52 @@ func (al *AccountList) RemoveAccount(id string) error {
 	return al.saveToFile()
 }
 
+// пополнение баланса
+func (al *AccountList) Deposit(accountID string, amount float64) error {
+	al.mu.Lock()
+	defer al.mu.Unlock()
+
+	acc, err := al.findAccount(accountID)
+	if err != nil {
+		return fmt.Errorf("account not found")
+	}
+
+	if err := acc.Deposit(amount); err != nil {
+		return err
+	}
+	go func() {
+		al.saveToFile()
+	}()
+	// if err := al.saveToFile(); err != nil {
+	// 	return err
+	// }
+	return nil
+}
+
+// снятие средств
+func (al *AccountList) Withdraw(accountID string, amount float64) error {
+	al.mu.Lock()
+	defer al.mu.Unlock()
+
+	acc, err := al.findAccount(accountID)
+	if err != nil {
+		return fmt.Errorf("account not found")
+	}
+
+	if err := acc.Withdraw(amount); err != nil {
+		return err
+	}
+
+	go func() {
+		al.saveToFile()
+	}()
+	// if err := al.saveToFile(); err != nil {
+	// 	return err
+	// }
+
+	return nil
+}
+
 // перевод средств между аккаунтами
 func (al *AccountList) Transfer(from string, to string, amount float64) error {
 	al.mu.Lock()
@@ -106,7 +159,35 @@ func (al *AccountList) Transfer(from string, to string, amount float64) error {
 	fromAcc.Balance -= amount
 	toAcc.Balance += amount
 
-	return al.saveToFile()
+	transactionOutAcc := Transaction{
+		ID:          len(fromAcc.Transactions) + 1,
+		Type:        "transfer_out",
+		FromAccount: fromAcc.ID,
+		ToAccount:   toAcc.ID,
+		Amount:      amount,
+		Timestamp:   time.Now(),
+		Status:      "completed",
+	}
+	fromAcc.Transactions = append(fromAcc.Transactions, transactionOutAcc)
+
+	transactionInAcc := Transaction{
+		ID:          len(toAcc.Transactions) + 1,
+		Type:        "transfer_in",
+		FromAccount: fromAcc.ID,
+		ToAccount:   toAcc.ID,
+		Amount:      amount,
+		Timestamp:   time.Now(),
+		Status:      "completed",
+	}
+	toAcc.Transactions = append(toAcc.Transactions, transactionInAcc)
+
+	go func() {
+		al.saveToFile()
+	}()
+	// if err := al.saveToFile(); err != nil {
+	// 	return err
+	// }
+	return nil
 }
 
 func (al *AccountList) findAccount(id string) (*Account, error) { // внутренний метод для поиска аккаунта по ID

@@ -5,11 +5,13 @@ import (
 	"log"
 	"mfp/account"
 	"mfp/api"
+	"mfp/session"
 )
 
 func main() {
 	// Инициализация системы
 	accountList := account.NewAccountList()
+	sm := session.NewSessionManager()
 
 	// Загружаем существующие данные
 	if err := accountList.LoadFromFile("accounts.json"); err != nil {
@@ -17,7 +19,7 @@ func main() {
 	}
 
 	// Запускаем сервер API
-	server := api.NewServer(accountList)
+	server := api.NewServer(accountList, sm)
 	log.Println("Starting banking system")
 	server.Start()
 }

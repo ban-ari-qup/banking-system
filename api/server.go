@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mfp/account"
+	"mfp/session"
 	"net/http"
 	"strconv"
 
@@ -14,11 +15,16 @@ import (
 // структура сервера API
 type Server struct {
 	accountList *account.AccountList
+	sessionMgr  *session.SessionManager
 }
 
 // создание нового сервера API
-func NewServer(accountList *account.AccountList) *Server {
-	return &Server{accountList: accountList}
+func NewServer(accountList *account.AccountList, sessionManager *session.SessionManager) *Server {
+	return &Server{
+		accountList: accountList,
+		sessionMgr:  sessionManager,
+	}
+
 }
 
 // обработчик создания аккаунта

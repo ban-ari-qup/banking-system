@@ -89,3 +89,12 @@ func (cg *CardGenerator) formatCardNumber(digits []int) string { //функци�
 	}
 	return result
 }
+
+func (cg *CardGenerator) GenerateSessionID() string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, 32)
+	for i := range b {
+		b[i] = charset[cg.rng.Intn(len(charset))]
+	}
+	return string(b)
+}

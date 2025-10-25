@@ -1,12 +1,14 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"mfp/account"
 	"mfp/session"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -14,17 +16,37 @@ import (
 
 // структура сервера API
 type Server struct {
-	accountList *account.AccountList
-	sessionMgr  *session.SessionManager
+	accountList    *account.AccountList
+	SessionManager *session.SessionManager
 }
 
 // создание нового сервера API
 func NewServer(accountList *account.AccountList, sessionManager *session.SessionManager) *Server {
 	return &Server{
-		accountList: accountList,
-		sessionMgr:  sessionManager,
+		accountList:    accountList,
+		SessionManager: sessionManager,
 	}
 
+}
+
+func (s *Server) authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("session_id")
+		if err != nil {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+
+		sess, err := s.SessionManager.GetSession(cookie.Value)
+		if err != nil {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "user_id", sess.UserID)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 // обработчик создания аккаунта
@@ -102,7 +124,7 @@ func (s *Server) handleGetAccount(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(AccountToResponse(acc))
 }
 
-func (s *Server) handleDeposit(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleMyDeposit(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if r.Method != http.MethodPost {
@@ -110,9 +132,9 @@ func (s *Server) handleDeposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		http.Error(w, "Missing account ID", http.StatusBadRequest)
+	userID, ok := r.Context().Value("user_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -122,7 +144,7 @@ func (s *Server) handleDeposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.accountList.Deposit(id, amount); err != nil {
+	if err := s.accountList.Deposit(userID, amount); err != nil {
 		http.Error(w, "Error depositing amount:\n"+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -130,19 +152,22 @@ func (s *Server) handleDeposit(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "Deposit successful",
-		"id":      id,
+		"id":      userID,
 		"amount":  fmt.Sprintf("%.2f", amount),
 	})
 }
 
-func (s *Server) handleWithdraw(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleMyWithdraw(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		http.Error(w, "Missing account ID", http.StatusBadRequest)
+
+	userID, ok := r.Context().Value("user_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 	amount, err := strconv.ParseFloat(r.URL.Query().Get("amount"), 64)
@@ -151,7 +176,7 @@ func (s *Server) handleWithdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.accountList.Withdraw(id, amount); err != nil {
+	if err := s.accountList.Withdraw(userID, amount); err != nil {
 		http.Error(w, "Error withdrawing amount:\n"+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -159,7 +184,7 @@ func (s *Server) handleWithdraw(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "Withdrawal successful",
-		"id":      id,
+		"id":      userID,
 		"amount":  fmt.Sprintf("%.2f", amount),
 	})
 }
@@ -167,16 +192,17 @@ func (s *Server) handleWithdraw(w http.ResponseWriter, r *http.Request) {
 // обработчик удаления аккаунта
 func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
 	if r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		http.Error(w, "Missing account ID", http.StatusBadRequest)
+	userID, ok := r.Context().Value("user_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	if err := s.accountList.RemoveAccount(id); err != nil {
+	if err := s.accountList.RemoveAccount(userID); err != nil {
 		http.Error(w, "Error removing account:\n"+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -185,15 +211,17 @@ func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 }
 
 // обработчик перевода средств между аккаунтами
-func (s *Server) handleAccountTransfer(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleMyTransfer(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	fromID := chi.URLParam(r, "id")
-	if fromID == "" {
-		http.Error(w, "Missing source account ID", http.StatusBadRequest)
+	fromID, ok := r.Context().Value("user_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -231,14 +259,16 @@ func (s *Server) handleAccountTransfer(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) handleAccountTransactions(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		http.Error(w, "Missing account ID", http.StatusBadRequest)
+func (s *Server) handleMyTransactions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	userID, ok := r.Context().Value("user_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	acc, err := s.accountList.GetAccount(id)
+	acc, err := s.accountList.GetAccount(userID)
 	if err != nil {
 		http.Error(w, "Account not found", http.StatusNotFound)
 		return
@@ -248,17 +278,115 @@ func (s *Server) handleAccountTransactions(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(acc.Transactions)
 }
 
+func (s *Server) handleGetMyAccount(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, ok := r.Context().Value("user_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	acc, err := s.accountList.GetAccount(userID)
+	if err != nil {
+		http.Error(w, "Account not found", http.StatusNotFound)
+		return
+	}
+
+	json.NewEncoder(w).Encode(AccountToResponse(acc))
+}
+
+func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var loginReq struct {
+		Phone    string `json:"phone"`
+		Password string `json:"password"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&loginReq); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	acc, err := s.accountList.GetAccount(loginReq.Phone)
+	if err != nil {
+		http.Error(w, "Invalid phone", http.StatusUnauthorized)
+		return
+	}
+
+	if !account.CheckPasswordHash(loginReq.Password, acc.Password) {
+		http.Error(w, "Invalid Password", http.StatusUnauthorized)
+		return
+	}
+
+	sessionID := s.SessionManager.CreateSession(acc.ID, r.RemoteAddr, r.UserAgent())
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    sessionID,
+		Expires:  time.Now().Add(24 * time.Hour),
+		HttpOnly: true,
+		Secure:   false,
+		Path:     "/",
+	})
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Login successful",
+		"user_id": acc.ID,
+	})
+}
+
+func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session_id")
+	if err != nil {
+		http.Error(w, "No active session", http.StatusUnauthorized)
+		return
+	}
+
+	s.SessionManager.DeleteSession(cookie.Value)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    "",
+		Expires:  time.Now().Add(-1 * time.Hour),
+		HttpOnly: true,
+		Path:     "/",
+	})
+
+	http.Redirect(w, r, "/login", http.StatusFound)
+}
+
 func (s *Server) Start() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	r.Post("/accounts", s.handleCreateAccount)
+
+	r.Post("/login", s.handleLogin)
+	r.Post("/logout", s.handleLogout)
+	r.Post("/register", s.handleCreateAccount)
+
+	r.Group(func(r chi.Router) {
+		r.Use(s.authMiddleware)
+		r.Get("/accounts/me", s.handleGetMyAccount)
+		r.Get("/accounts/me/transactions", s.handleMyTransactions)
+		r.Post("/accounts/me/deposit", s.handleMyDeposit)
+		r.Post("/accounts/me/withdraw", s.handleMyWithdraw)
+		r.Post("/accounts/me/transfer", s.handleMyTransfer)
+		r.Delete("/accounts/me", s.handleDeleteAccount)
+	})
+
 	r.Get("/accounts", s.handleGetAccounts)
 	r.Get("/accounts/{id}", s.handleGetAccount)
-	r.Get("/accounts/{id}/transactions", s.handleAccountTransactions)
-	r.Post("/accounts/{id}/deposit", s.handleDeposit)
-	r.Post("/accounts/{id}/withdraw", s.handleWithdraw)
-	r.Post("/accounts/{id}/transfer", s.handleAccountTransfer)
-	r.Delete("/accounts/{id}", s.handleDeleteAccount)
+
 	fmt.Println("Server started at http://localhost:8080")
 	http.ListenAndServe(":8080", r)
 }

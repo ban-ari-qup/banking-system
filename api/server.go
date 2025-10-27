@@ -18,6 +18,7 @@ import (
 type Server struct {
 	accountList    *account.AccountList
 	SessionManager *session.SessionManager
+	RateLimiter    *RateLimiter
 }
 
 // создание нового сервера API
@@ -25,8 +26,32 @@ func NewServer(accountList *account.AccountList, sessionManager *session.Session
 	return &Server{
 		accountList:    accountList,
 		SessionManager: sessionManager,
+		RateLimiter:    NewRateLimiter(3, 10*time.Second),
 	}
+}
 
+func (s *Server) rateLimitMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := getIPAddress(r)
+		fmt.Printf("Rate limit check for IP: %s\n", ip)
+
+		if !s.RateLimiter.Allow(ip) {
+			fmt.Printf("Rate limit EXCEEDED for IP: %s\n", ip) // ← ДОБАВЬ ЛОГ
+			http.Error(w, "Too many requests. Please try again later.", http.StatusTooManyRequests)
+			return
+		}
+		fmt.Printf("Rate limit ALLOWED for IP: %s\n", ip)
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func getIPAddress(r *http.Request) string {
+	ip := r.Header.Get("X-Forwarded-For")
+	if ip == "" {
+		ip = r.RemoteAddr
+	}
+	return ip
 }
 
 func (s *Server) authMiddleware(next http.Handler) http.Handler {
@@ -369,6 +394,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 func (s *Server) Start() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Use(s.rateLimitMiddleware)
 
 	r.Post("/login", s.handleLogin)
 	r.Post("/logout", s.handleLogout)
@@ -376,6 +402,7 @@ func (s *Server) Start() {
 
 	r.Group(func(r chi.Router) {
 		r.Use(s.authMiddleware)
+
 		r.Get("/accounts/me", s.handleGetMyAccount)
 		r.Get("/accounts/me/transactions", s.handleMyTransactions)
 		r.Post("/accounts/me/deposit", s.handleMyDeposit)

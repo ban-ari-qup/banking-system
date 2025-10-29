@@ -1,25 +1,22 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"mfp/account"
 	"mfp/api"
+	"mfp/database"
 	"mfp/session"
 )
 
 func main() {
-	// Инициализация системы
-	accountList := account.NewAccountList()
-	sm := session.NewSessionManager()
-
-	// Загружаем существующие данные
-	if err := accountList.LoadFromFile("accounts.json"); err != nil {
-		fmt.Println("Error loading accounts:", err)
+	repo, err := database.Connect()
+	if err != nil {
+		log.Fatal("Database connection failed: ", err)
 	}
+	log.Println("Database connected successsfully!")
 
-	// Запускаем сервер API
-	server := api.NewServer(accountList, sm)
-	log.Println("Starting banking system")
+	sessionManager := session.NewSessionManager()
+
+	// СТАНОВИТСЯ:
+	server := api.NewServer(repo, sessionManager) // ← Передаем repo вместо accountList
 	server.Start()
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mfp/account"
+	"mfp/database"
 	"mfp/session"
 	"net/http"
 	"strconv"
@@ -16,15 +17,15 @@ import (
 
 // структура сервера API
 type Server struct {
-	accountList    *account.AccountList
+	repo           *database.Repository
 	SessionManager *session.SessionManager
 	RateLimiter    *RateLimiter
 }
 
 // создание нового сервера API
-func NewServer(accountList *account.AccountList, sessionManager *session.SessionManager) *Server {
+func NewServer(repo *database.Repository, sessionManager *session.SessionManager) *Server {
 	return &Server{
-		accountList:    accountList,
+		repo:           repo,
 		SessionManager: sessionManager,
 		RateLimiter:    NewRateLimiter(3, 10*time.Second),
 	}
@@ -95,7 +96,7 @@ func (s *Server) handleCreateAccount(w http.ResponseWriter, r *http.Request) {
 	acc := account.NewAccount(req.Password, req.FirstName, req.Phone, req.Age)
 	// log.Printf("✅ Account object created in %v", time.Since(start))
 
-	if err := s.accountList.AddAccount(acc); err != nil {
+	if err := s.repo.CreateAccount(acc); err != nil {
 		// log.Printf("❌ AddAccount error: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -116,7 +117,10 @@ func (s *Server) handleGetAccounts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accounts := s.accountList.GetAccounts()
+	accounts, err := s.repo.GetAccounts()
+	if err != nil {
+		http.Error(w, "Couldnt get accounts from database", http.StatusBadRequest)
+	}
 	response := make([]AccountResponse, 0, len(accounts))
 	for _, acc := range accounts {
 		response = append(response, AccountToResponse(acc))
@@ -139,7 +143,7 @@ func (s *Server) handleGetAccount(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Missing account ID", http.StatusBadRequest)
 		return
 	}
-	acc, err := s.accountList.GetAccount(id)
+	acc, err := s.repo.GetAccount(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -169,7 +173,7 @@ func (s *Server) handleMyDeposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.accountList.Deposit(userID, amount); err != nil {
+	if err := s.repo.Deposit(userID, amount); err != nil {
 		http.Error(w, "Error depositing amount:\n"+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -201,7 +205,7 @@ func (s *Server) handleMyWithdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.accountList.Withdraw(userID, amount); err != nil {
+	if err := s.repo.Withdraw(userID, amount); err != nil {
 		http.Error(w, "Error withdrawing amount:\n"+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -227,7 +231,7 @@ func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	if err := s.accountList.RemoveAccount(userID); err != nil {
+	if err := s.repo.DeleteAccount(userID); err != nil {
 		http.Error(w, "Error removing account:\n"+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -270,7 +274,7 @@ func (s *Server) handleMyTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.accountList.Transfer(fromID, req.To, req.Amount); err != nil {
+	if err := s.repo.Transfer(fromID, req.To, req.Amount); err != nil {
 		http.Error(w, "Error transferring amount:\n"+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -293,14 +297,12 @@ func (s *Server) handleMyTransactions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	acc, err := s.accountList.GetAccount(userID)
+	transactions, err := s.repo.GetTransactions(userID)
 	if err != nil {
-		http.Error(w, "Account not found", http.StatusNotFound)
+		http.Error(w, "Failed to get transactions", http.StatusInternalServerError)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(acc.Transactions)
+	json.NewEncoder(w).Encode(transactions)
 }
 
 func (s *Server) handleGetMyAccount(w http.ResponseWriter, r *http.Request) {
@@ -317,7 +319,7 @@ func (s *Server) handleGetMyAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	acc, err := s.accountList.GetAccount(userID)
+	acc, err := s.repo.GetAccount(userID)
 	if err != nil {
 		http.Error(w, "Account not found", http.StatusNotFound)
 		return
@@ -342,7 +344,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	acc, err := s.accountList.GetAccount(loginReq.Phone)
+	acc, err := s.repo.GetAccountByPhone(loginReq.Phone)
 	if err != nil {
 		http.Error(w, "Invalid phone", http.StatusUnauthorized)
 		return
